@@ -1,0 +1,183 @@
+@extends('user.layout.auth')
+
+@section('content')
+
+<?php $login_user = asset('asset/img/login-user-bg.jpg'); ?>
+<div class="full-page-bg" style="background-image: url('{{asset(Setting::get('user_backgruond_photo'))}}');">
+
+<div class="log-overlay"></div>
+    <div class="full-page-bg-inner">
+        <div class="row no-margin">
+            <div class="col-md-6 log-left">
+                <span style="background: none" class="login-logo"><img style="height: 120px;border-radius: 50%;border: white solid 2px" src="{{ url('/').Setting::get('site_logo', asset('logo-black.png'))}}"></span>
+                @if(app()->getLocale()=="en")
+                    <h2>{!!Setting::get('big_title_en',asset(''))!!}</h2>
+                    <p>{!!Setting::get('small_title_en',asset(''))!!}</p>
+                @else
+                    <h2>{!!Setting::get('big_title_ar',asset(''))!!}</h2>
+                    <p>{!!Setting::get('small_title_ar',asset(''))!!}</p>
+                @endif
+
+            </div>
+            <div class="col-md-6 log-right">
+                <div class="login-box-outer">
+                <div class="login-box row no-margin">
+                    <div class="col-md-12">
+                        <a class="log-blk-btn" href="{{url('login')}}">@lang('user.already_have_an_account')</a>
+                        <h3>@lang('user.create_new_account')</h3>
+                    </div>
+                    <form role="form" method="POST" action="{{ url('/register') }}">
+
+                        <div id="first_step">
+                            <div class="col-md-4">
+                                <input value="+2" type="text" placeholder="+2" id="country_code" name="country_code" />
+                            </div>
+
+                            <div class="col-md-8">
+                                <input type="text" autofocus id="phone_number" class="form-control" placeholder="01010209147" name="phone_number" value="{{ old('phone_number') }}" />
+                            </div>
+
+                            <div class="col-md-8">
+                                @if ($errors->has('phone_number'))
+                                    <span class="help-block">
+                                        <strong>{{ $errors->first('phone_number') }}</strong>
+                                    </span>
+                                @endif
+                            </div>
+
+                            <div class="col-md-12" style="padding-bottom: 10px;" id="mobile_verfication">
+                                <input type="button" class="log-teal-btn small" onclick="smsLogin();" value="@lang('user.verify_phone_number')"/>
+                            </div>
+
+                        </div>
+
+                        {{ csrf_field() }}
+                        <div id="second_step" >
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" placeholder="@lang('user.profile.first_name')" name="first_name" value="{{ old('first_name') }}">
+
+                                @if ($errors->has('first_name'))
+                                    <span class="help-block">
+                                        <strong>{{ $errors->first('first_name') }}</strong>
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" placeholder="@lang('user.profile.last_name')" name="last_name" value="{{ old('last_name') }}">
+
+                                @if ($errors->has('last_name'))
+                                    <span class="help-block">
+                                        <strong>{{ $errors->first('last_name') }}</strong>
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="col-md-12">
+                                <input type="email" class="form-control" name="email" placeholder="@lang('user.profile.email')" value="{{ old('email') }}">
+
+                                @if ($errors->has('email'))
+                                    <span class="help-block">
+                                        <strong>{{ $errors->first('email') }}</strong>
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="col-md-12">
+                                <input type="password" class="form-control" name="password"  placeholder="@lang('user.profile.password')">
+
+                                @if ($errors->has('password'))
+                                    <span class="help-block">
+                                        <strong>{{ $errors->first('password') }}</strong>
+                                    </span>
+                            </div>
+                            <div class="col-md-12">
+                                <input type="password" placeholder="@lang('user.profile.confirm_password')" class="form-control" name="password_confirmation">
+                                @if ($errors->has('password_confirmation'))
+                                    <span class="help-block">
+                                        <strong>{{ $errors->first('password_confirmation') }}</strong>
+                                    </span>
+                                @endif
+                            </div>
+
+                            <div class="col-md-12">
+                                @endif
+                                <button class="log-teal-btn" type="submit">@lang('user.rigister')</button>
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                    <div class="col-md-12">
+                        <p class="helper">@lang('user.or') <a href="{{route('login')}}">@lang('user.sing_in')</a>@lang('user.with_your_user_accont')</p>
+                        <p class="helper"> <a href="{{ url('/') }}">@lang('user.back')</a></p>
+                    </div>
+
+                </div>
+                <div class="log-copy"><p class="no-margin">{{ Setting::get('site_copyright', '&copy; '.date('Y').' Appoets') }}</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://sdk.accountkit.com/en_US/sdk.js"></script>
+    <script>
+        // initialize Account Kit with CSRF protection
+        AccountKit_OnInteractive = function(){
+            AccountKit.init(
+                {
+                    appId: {{env('FB_APP_ID')}},
+                    state:"state",
+                    version: "{{env('FB_APP_VERSION')}}",
+                    fbAppEventsEnabled:true
+                }
+            );
+        };
+
+        // login callback
+        function loginCallback(response) {
+            if (response.status === "PARTIALLY_AUTHENTICATED") {
+                var code = response.code;
+                var csrf = response.state;
+                // Send code to server to exchange for access token
+                $('#mobile_verfication').html("<p class='helper'> * Phone Number Verified </p>");
+                $('#phone_number').attr('readonly',true);
+                $('#country_code').attr('readonly',true);
+                $('#second_step').fadeIn(400);
+
+                $.post("{{route('account.kit')}}",{ code : code }, function(data){
+                    $('#phone_number').val(data.phone.national_number);
+                    $('#country_code').val('+'+data.phone.country_prefix);
+                });
+
+            }
+            else if (response.status === "NOT_AUTHENTICATED") {
+                // handle authentication failure
+                $('#mobile_verfication').html("<p class='helper'> * Authentication Failed </p>");
+            }
+            else if (response.status === "BAD_PARAMS") {
+                // handle bad parameters
+            }
+        }
+    </script>
+    <script>
+
+        // phone form submission handler
+        function smsLogin() {
+            var countryCode = document.getElementById("country_code").value;
+            var phoneNumber = document.getElementById("phone_number").value;
+
+            $('#mobile_verfication').html("<p class='helper'> @lang('user.plz_wait') </p>");
+            $('#phone_number').attr('readonly',true);
+            $('#country_code').attr('readonly',true);
+
+            AccountKit.login(
+                'PHONE',
+                {countryCode: countryCode, phoneNumber: phoneNumber}, // will use default values if not specified
+                loginCallback
+            );
+        }
+
+    </script>
+
+    @section('scripts')
+</div>
+
+@endsection
